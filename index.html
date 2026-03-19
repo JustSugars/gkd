@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电费分摊计算器</title>
+    <!-- 字节跳动高速CDN（轻量） -->
+    <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-3600M/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-3600M/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        /* 全局重置（极简） */
+        * {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
+            letter-spacing: 0.3px;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 15px; /* 手机端减少上下padding，避免挤 */
+        }
+
+        /* 计算器卡片 - 自适应+手机友好 */
+        .calculator-card {
+            width: 100%;
+            max-width: 750px;
+            margin: 0 auto;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            overflow: hidden;
+        }
+
+        /* 卡片头部 - 国网标准浅绿色 #009688（国网绿） */
+        .card-header {
+            background-color: #009688; /* 国网官方浅绿色主色 */
+            color: white;
+            border-bottom: none;
+            padding: 18px 20px; /* 手机端减少padding，避免挤 */
+            display: flex;
+            align-items: center;
+            gap: 10px; /* 图标和标题间距优化 */
+        }
+        
+        /* 修复：标题图标基础样式（默认显示，小屏隐藏） */
+        .title-icon {
+            font-size: 26px; /* 匹配标题尺寸 */
+            color: #ffffff;
+            margin-right: 8px; /* 图标间增加间距 */
+        }
+        
+        /* 媒体查询：小屏手机（<375px）隐藏图标 */
+        @media (max-width: 374px) {
+            .title-icon {
+                display: none !important;
+            }
+            /* 小屏隐藏副标题，保证标题排版 */
+            .subtitle {
+                display: none !important;
+            }
+        }
+
+        /* 标题核心样式：响应式字号+加粗+字间距 */
+        .card-title {
+            font-size: clamp(22px, 4vw, 26px); /* 响应式字号：手机22px，大屏26px */
+            font-weight: 700; /* 加粗突出 */
+            font-family: "Microsoft YaHei Bold", "PingFang SC Bold", sans-serif !important;
+            margin-bottom: 0;
+            flex: 1;
+            letter-spacing: 1px; /* 字间距更舒展 */
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* 轻微阴影提升层次 */
+            display: flex;
+            align-items: center;
+        }
+        
+        .subtitle {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 0;
+            white-space: nowrap; /* 避免小字换行挤 */
+        }
+
+        /* 卡片主体 - 手机端间距优化 */
+        .card-body {
+            padding: 20px; /* 手机端减少内边距 */
+            width: 100%;
+        }
+
+        /* 输入项 - 自适应+手机友好 */
+        .form-group {
+            margin-bottom: 18px !important;
+            width: 100%;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #009688; /* 国网绿 */
+            margin-bottom: 6px !important;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100% !important;
+            padding: 11px 14px; /* 手机端输入框内边距优化 */
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 15px;
+            background-color: #fff;
+        }
+        .form-control:focus {
+            border-color: #009688;
+            box-shadow: none;
+            outline: none;
+        }
+        .form-control::placeholder {
+            color: #999;
+            font-size: 13px;
+        }
+
+        /* 计算按钮 - 自适应+国网绿 */
+        .btn-calculate {
+            width: 100% !important;
+            background-color: #009688;
+            border: none;
+            border-radius: 4px;
+            padding: 11px 0;
+            font-size: 15px;
+            font-weight: 500;
+            color: white;
+            margin-top: 5px;
+        }
+        .btn-calculate:hover {
+            background-color: #00897b;
+            color: white;
+        }
+
+        /* 通用弹窗样式（错误/结果共用） */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease; /* 极简动画 */
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 弹窗内容 - 手机端适配 */
+        .modal-content {
+            background: white;
+            border-radius: 6px;
+            width: 90%;
+            max-width: 450px; /* 手机端弹窗缩小 */
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 弹窗标题 - 区分错误/结果 */
+        .modal-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .title-error {
+            color: #f44336; /* 错误标题色 */
+        }
+        .title-result {
+            color: #009688; /* 结果标题色 */
+        }
+
+        /* 弹窗内容文本 */
+        .modal-text {
+            font-size: 15px;
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+        .modal-result-item {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 8px;
+        }
+        .modal-result-item strong {
+            color: #009688;
+            font-weight: 500;
+        }
+        .modal-cost-item {
+            font-size: 15px;
+            font-weight: 500;
+            margin-top: 10px !important;
+            color: #333;
+        }
+        .modal-cost-item strong {
+            color: #f44336;
+        }
+
+        /* 弹窗按钮 - 仅关闭按钮 */
+        .modal-btn {
+            width: 100%;
+            padding: 9px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            background-color: #009688;
+            color: white;
+        }
+        .modal-btn:hover {
+            background-color: #00897b;
+        }
+
+        /* 复制成功提示（极简动画） */
+        .copy-tip {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4caf50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease;
+            z-index: 10000;
+        }
+        .copy-tip.active {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <!-- 计算器卡片 -->
+    <div class="calculator-card card">
+        <div class="card-header">
+            <!-- 标题内图标：计算器+电力（电脑/宽屏显示，小屏隐藏） -->
+            <h2 class="card-title">
+                <i class="bi bi-calculator title-icon"></i> <!-- 计算器图标 -->
+                <i class="bi bi-bolt title-icon"></i> <!-- 电力图标 -->
+                电费分摊计算器
+            </h2>
+            <p class="subtitle">&copy;东风腾飞 &nbsp;beta0.1</p>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="totalPower" class="form-label">总用电量（度）</label>
+                <input type="number" class="form-control" id="totalPower" placeholder="例如：300" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="totalCost" class="form-label">总电费（元）</label>
+                <input type="number" class="form-control" id="totalCost" placeholder="例如：150" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="powerA" class="form-label">A的用电量（度）</label>
+                <input type="number" class="form-control" id="powerA" placeholder="例如：100" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+                <label for="powerB" class="form-label">B的用电量（度）</label>
+                <input type="number" class="form-control" id="powerB" placeholder="例如：120" step="0.01" min="0">
+            </div>
+            <button onclick="calculateElectricity()" class="btn btn-calculate">计算电费</button>
+        </div>
+    </div>
+
+    <!-- 错误提示弹窗（仅关闭按钮） -->
+    <div class="modal-overlay" id="errorModal">
+        <div class="modal-content">
+            <h3 class="modal-title title-error">
+                <i class="bi bi-exclamation-circle"></i>输入错误
+            </h3>
+            <div class="modal-text" id="errorText"></div>
+            <button class="modal-btn" onclick="closeAllModal()">关闭</button>
+        </div>
+    </div>
+
+    <!-- 结果弹窗（仅关闭按钮，保留复制功能） -->
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal-content">
+            <h3 class="modal-title title-result">
+                <i class="bi bi-calculator"></i>计算结果
+            </h3>
+            <div class="modal-text">
+                <div class="modal-result-item">每度电单价：<strong id="modalUnitPrice"></strong> 元/度</div>
+                <div class="modal-result-item">公共用电量：<strong id="modalPublicPower"></strong> 度</div>
+                <div class="modal-result-item">每人平摊公摊：<strong id="modalEachPublicPower"></strong> 度</div>
+                <div class="modal-result-item">A总用电量：<strong id="modalATotalPower"></strong> 度</div>
+                <div class="modal-result-item">B总用电量：<strong id="modalBTotalPower"></strong> 度</div>
+                <div class="modal-result-item modal-cost-item">A的电费：<strong id="modalACost"></strong> 元</div>
+                <div class="modal-result-item modal-cost-item">B的电费：<strong id="modalBCost"></strong> 元</div>
+            </div>
+            <button class="modal-btn" onclick="copyResult()">复制结果</button>
+            <button class="modal-btn" style="margin-top:8px" onclick="closeAllModal()">关闭</button>
+        </div>
+    </div>
+
+    <!-- 复制成功提示 -->
+    <div class="copy-tip" id="copyTip">复制成功！</div>
+
+    <script>
+        // 性能优化：缓存DOM节点
+        const errorModal = document.getElementById('errorModal');
+        const resultModal = document.getElementById('resultModal');
+        const errorText = document.getElementById('errorText');
+        const copyTip = document.getElementById('copyTip');
+        let tipTimer = null;
+
+        // 计算核心函数（极简逻辑）
+        function calculateElectricity() {
+            // 获取输入值
+            const totalPower = +document.getElementById('totalPower').value || 0;
+            const totalCost = +document.getElementById('totalCost').value || 0;
+            const powerA = +document.getElementById('powerA').value || 0;
+            const powerB = +document.getElementById('powerB').value || 0;
+            
+            // 关闭所有弹窗
+            closeAllModal();
+
+            // 输入验证
+            if (!totalPower || !totalCost) {
+                showErrorModal('总用电量和总电费必须大于0！');
+                return;
+            }
+            if (powerA < 0 || powerB < 0) {
+                showErrorModal('A、B的用电量不能为负数！');
+                return;
+            }
+            if (powerA + powerB > totalPower) {
+                showErrorModal('A+B的用电量不能超过总用电量！');
+                return;
+            }
+
+            // 计算逻辑
+            const unitPrice = totalCost / totalPower;
+            const publicPower = totalPower - powerA - powerB;
+            const eachPublicPower = publicPower / 2;
+            const aTotalPower = powerA + eachPublicPower;
+            const bTotalPower = powerB + eachPublicPower;
+
+            // 填充结果
+            document.getElementById('modalUnitPrice').textContent = unitPrice.toFixed(4);
+            document.getElementById('modalPublicPower').textContent = publicPower.toFixed(2);
+            document.getElementById('modalEachPublicPower').textContent = eachPublicPower.toFixed(2);
+            document.getElementById('modalATotalPower').textContent = aTotalPower.toFixed(2);
+            document.getElementById('modalBTotalPower').textContent = bTotalPower.toFixed(2);
+            document.getElementById('modalACost').textContent = (aTotalPower * unitPrice).toFixed(2);
+            document.getElementById('modalBCost').textContent = (bTotalPower * unitPrice).toFixed(2);
+
+            // 显示结果弹窗
+            resultModal.classList.add('active');
+        }
+
+        // 错误提示弹窗
+        function showErrorModal(msg) {
+            errorText.textContent = msg;
+            errorModal.classList.add('active');
+        }
+
+        // 关闭所有弹窗
+        function closeAllModal() {
+            errorModal.classList.remove('active');
+            resultModal.classList.remove('active');
+            if (tipTimer) clearTimeout(tipTimer);
+            copyTip.classList.remove('active');
+        }
+
+        // 复制结果
+        function copyResult() {
+            const resultText = `
+电费计算结果：
+单价：${document.getElementById('modalUnitPrice').textContent} 元/度
+公摊电量：${document.getElementById('modalPublicPower').textContent} 度
+每人公摊：${document.getElementById('modalEachPublicPower').textContent} 度
+A总电量：${document.getElementById('modalATotalPower').textContent} 度
+B总电量：${document.getElementById('modalBTotalPower').textContent} 度
+A电费：${document.getElementById('modalACost').textContent} 元
+B电费：${document.getElementById('modalBCost').textContent} 元
+            `.trim();
+            
+            // 复制逻辑
+            navigator.clipboard.writeText(resultText).then(() => {
+                copyTip.classList.add('active');
+                tipTimer = setTimeout(() => {
+                    copyTip.classList.remove('active');
+                }, 1500);
+            }).catch(() => {
+                showErrorModal('复制失败，请手动复制！');
+            });
+        }
+
+        // 点击遮罩层关闭弹窗
+        [errorModal, resultModal].forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeAllModal();
+            });
+        });
+
+        // ESC关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAllModal();
+        });
+    </script>
+</body>
+</html>
