@@ -69,14 +69,14 @@
             text-overflow: ellipsis;
         }
 
-        /* 公告按钮样式 */
+        /* 公告按钮样式 —— 反色：白底 + 绿色图标 */
         .notice-button {
             width: 44px;
             height: 44px;
             border-radius: 8px;
-            background-color: #009688;
-            color: white;
-            border: 2px solid white;
+            background-color: #ffffff;
+            color: #009688;
+            border: 2px solid #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -86,14 +86,14 @@
             flex-shrink: 0;
         }
         .notice-button:hover {
-            background-color: #00897b;
+            background-color: #f0f0f0;
             transform: scale(1.05);
             box-shadow: 0 4px 12px rgba(0, 150, 136, 0.3);
         }
         .notice-button svg {
             width: 24px;
             height: 24px;
-            fill: white;
+            fill: #009688;
         }
 
         /* 小屏优化 */
@@ -134,7 +134,7 @@
             gap: 10px;
             width: 100%;
         }
-        .btn-calculate, .btn-reset {
+        .btn-calculate, .btn-reset, .btn-quick {
             width: 100% !important;
             padding: 16px 0;
             border-radius: 4px;
@@ -157,6 +157,15 @@
             transform: scale(1.02);
             box-shadow: 0 4px 12px rgba(0, 150, 136, 0.2);
         }
+        .btn-quick {
+            background-color: #009688;
+            color: white;
+        }
+        .btn-quick:hover {
+            background-color: #00897b;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 150, 136, 0.2);
+        }
         .btn-reset {
             background-color: #ffffff;
             border: 1px solid #009688 !important;
@@ -173,6 +182,9 @@
             flex-shrink: 0;
         }
         .btn-calculate .btn-icon {
+            fill: white;
+        }
+        .btn-quick .btn-icon {
             fill: white;
         }
         .btn-reset .btn-icon {
@@ -247,7 +259,7 @@
             max-width: 500px;
             margin-top: 20px;
             margin-bottom: 20px;
-            padding: 20px;
+            padding: 0;
             box-shadow: 0 4px 12px rgba(0, 150, 136, 0.15);
             transform: translateY(-10px) scale(0.98);
             opacity: 0;
@@ -255,55 +267,98 @@
             max-height: 90vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         .notice-overlay.active .notice-card {
             transform: translateY(0) scale(1);
             opacity: 1;
         }
+
+        /* 公告头部 —— 清爽不拥挤 */
         .notice-header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-            padding: 12px 15px;
+            gap: 14px;
+            padding: 14px 18px;
             background-color: #009688;
-            border-radius: 8px;
             flex-shrink: 0;
         }
         .notice-icon {
-            width: 48px;
-            height: 48px;
+            width: 52px;
+            height: 52px;
             background-color: #009688;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            border: 2px solid white;
+            border: none; /* 去掉边框 */
         }
         .notice-icon svg {
-            width: 28px;
-            height: 28px;
+            width: 34px;
+            height: 34px;
             fill: white;
         }
         .notice-title {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
             color: white;
             margin: 0;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
         }
+
+        /* 标签页样式 —— 清爽分隔版，不连成片、不臃肿 */
+        .notice-tabs {
+            display: flex;
+            height: 50px;
+            background: #ffffff;
+            padding: 0 20px;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+        .notice-tab {
+            flex: 1;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #f5f5f5;
+            color: #666;
+            border-radius: 6px;
+            transition: all 0.25s ease;
+        }
+        .notice-tab.active {
+            background: #009688;
+            color: white;
+        }
+        .notice-tab:hover:not(.active) {
+            background: #e0f2f1;
+            color: #00695c;
+        }
+
+        /* 内容区域 + 动画 + 滚动条 */
         .notice-content-wrapper {
             flex: 1;
+            padding: 20px;
             overflow-y: auto;
-            margin-bottom: 15px;
-            padding-right: 5px;
+            display: none;
+            opacity: 0;
+            transform: translateX(10px);
+            transition: all 0.25s ease;
+        }
+        .notice-content-wrapper.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
         }
         .notice-content {
             font-size: 14px;
             color: #333333;
             line-height: 1.7;
-            margin-bottom: 0;
         }
         .notice-content p {
             margin-bottom: 8px;
@@ -325,6 +380,8 @@
             font-family: "Consolas", "Monaco", monospace !important;
         }
         .notice-btn-container {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
             flex-shrink: 0;
         }
         .notice-btn {
@@ -356,40 +413,13 @@
 
         /* 小屏公告优化 */
         @media (max-width: 480px) {
-            .notice-card {
-                padding: 15px;
-            }
-            .notice-header {
-                padding: 10px 12px;
-                gap: 8px;
-                margin-bottom: 12px;
-            }
-            .notice-icon {
-                width: 42px;
-                height: 42px;
-            }
-            .notice-icon svg {
-                width: 24px;
-                height: 24px;
-            }
-            .notice-title {
-                font-size: 22px;
-            }
-            .notice-content {
-                font-size: 13px;
-                line-height: 1.6;
-            }
-            .formula-box {
-                padding: 8px 10px;
-            }
-            .btn-calculate, .btn-reset, .notice-btn {
-                font-size: 15px;
-                gap: 8px;
-            }
-            .btn-icon {
-                width: 22px;
-                height: 22px;
-            }
+            .notice-card { padding: 0; }
+            .notice-header { padding: 12px 16px; gap: 12px; }
+            .notice-icon { width: 46px; height: 46px; }
+            .notice-icon svg { width: 30px; height: 30px; }
+            .notice-title { font-size: 24px; }
+            .notice-content { font-size: 13px; line-height: 1.6; }
+            .formula-box { padding: 8px 10px; }
         }
 
         /* 通用弹窗样式 */
@@ -402,6 +432,7 @@
         }
         .title-error { color: #f44336; }
         .title-result { color: #009688; }
+        .title-quick { color: #009688; }
         .modal-text {
             font-size: 15px;
             color: #333;
@@ -420,6 +451,29 @@
             margin-top: 10px !important;
         }
         .modal-cost-item strong { color: #f44336; }
+        .quick-result {
+            font-size: 18px;
+            font-weight: bold;
+            color: #009688;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .tip-text {
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.5;
+        }
+        .price-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 6px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-weight: 500;
+        }
 
         /* 弹窗按钮 */
         .modal-btn {
@@ -444,6 +498,9 @@
         .modal-btn.copy-btn { 
             background-color: #2196F3; 
             margin-bottom: 8px;
+        }
+        .modal-btn.quick-btn {
+            background-color: #009688;
         }
         .modal-btn .btn-icon {
             width: 22px;
@@ -492,11 +549,12 @@
             <img src="logo.png" alt="logo" class="logo-img">
             <div class="title-container">
                 <h2 class="card-title">电费分摊计算器</h2>
-                <p class="subtitle">&copy;东风腾飞 &nbsp;Alpha1.4</p>
+                <p class="subtitle">&copy;东风腾飞 &nbsp;Alpha1.5</p>
             </div>
+
             <button class="notice-button" onclick="showNotice()">
                 <svg viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                 </svg>
             </button>
         </div>
@@ -525,6 +583,15 @@
                     </svg>
                     计算电费
                 </button>
+                
+                <!-- ✅ 正确：Google 官方闪光灯闪电图标 -->
+                <button onclick="openQuickCalc()" class="btn-quick">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M7 2v2h10V2H7zm11 6l-4 6h3l-4 8h-2l4-8h-3l4-8h5z"/>
+                    </svg>
+                    即时电费
+                </button>
+                
                 <button onclick="resetForm()" class="btn-reset">
                     <svg class="btn-icon" viewBox="0 0 24 24">
                         <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
@@ -535,18 +602,41 @@
         </div>
     </div>
 
-    <!-- 公告组件 -->
+    <!-- 公告弹窗（清爽最终版） -->
     <div class="notice-overlay" id="noticeOverlay">
         <div class="notice-card">
             <div class="notice-header">
                 <div class="notice-icon">
                     <svg viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
                     </svg>
                 </div>
                 <h3 class="notice-title">公告</h3>
             </div>
-            <div class="notice-content-wrapper">
+
+            <!-- 标签顺序：更新公告(左) | 使用指南(右) -->
+            <div class="notice-tabs">
+                <div class="notice-tab active" onclick="switchTab(0)">更新公告</div>
+                <div class="notice-tab" onclick="switchTab(1)">使用指南</div>
+            </div>
+
+            <!-- 默认显示：更新公告 -->
+            <div class="notice-content-wrapper active" id="tab1">
+                <div class="notice-content">
+                    <p><strong>Alpha 1.5 更新日志</strong></p>
+                    <p>• 新增公告弹窗标签页切换功能</p>
+                    <p>• 新增“即时电费”功能：输入用电量（度）就能得出大约多少电费。注：根据重庆市统一居民统一电价大约估算，实际电费请以国家电网电费账单为准</p>
+                    <p>• 公告按钮反色显示（白底+绿色图标）</p>
+                    <p>• 公告弹窗添加滚动条，支持长文本查看</p>
+                    <p>• 优化移动端显示效果</p>
+                    <p>• 修复已知问题，提升稳定性</p>
+                    <br>
+                    <p><strong>下版本将修复的已知问题</strong></p>
+                    <p>• “即时电费”按钮图标不准</p>
+                </div>
+            </div>
+
+            <div class="notice-content-wrapper" id="tab2">
                 <div class="notice-content">
                     <p>本计算器专为两人合租场景设计，可精准计算电费分摊金额，自动处理公摊电量的平均分配。</p>
                     <p><strong>参数说明：</strong></p>
@@ -568,6 +658,7 @@
                     <p>系统会自动计算公摊电量并平均分配，确保分摊结果公平合理。</p>
                 </div>
             </div>
+
             <div class="notice-btn-container">
                 <button class="notice-btn" onclick="closeAllModal()">
                     <svg class="btn-icon" viewBox="0 0 24 24">
@@ -576,6 +667,26 @@
                     我已知晓
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- 即时电费弹窗 -->
+    <div class="modal-overlay" id="quickModal">
+        <div class="modal-content">
+            <h3 class="modal-title title-quick">即时电费计算</h3>
+            <div class="form-group">
+                <label class="form-label">输入用电量（度）</label>
+                <input type="number" id="quickPower" class="form-control" placeholder="请输入用电度数" step="0.01" min="0" oninput="calcQuick()">
+            </div>
+            <div class="quick-result" id="quickResult">请输入用电量</div>
+            <div class="tip-text">本结果为重庆市居民电价估算，仅供参考<br>实际费用请以电费账单为准</div>
+            <div class="price-info">当前适用电价：0.56 元/度</div>
+            <button class="modal-btn quick-btn" onclick="closeAllModal()">
+                <svg class="btn-icon" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+                关闭
+            </button>
         </div>
     </div>
 
@@ -598,7 +709,6 @@
             <div class="modal-text">
                 <div class="modal-result-item">每度电单价：<strong id="modalUnitPrice"></strong> 元/度</div>
                 <div class="modal-result-item">公共用电量：<strong id="modalPublicPower"></strong> 度</div>
-                <!-- 修复：添加缺失的modalEachPublicPower元素 -->
                 <div class="modal-result-item">每人平摊公摊：<strong id="modalEachPublicPower"></strong> 度</div>
                 <div class="modal-result-item">A总用电量：<strong id="modalATotalPower"></strong> 度</div>
                 <div class="modal-result-item">B总用电量：<strong id="modalBTotalPower"></strong> 度</div>
@@ -626,10 +736,18 @@
         // 缓存DOM节点
         const errorModal = document.getElementById('errorModal');
         const resultModal = document.getElementById('resultModal');
+        const quickModal = document.getElementById('quickModal');
         const noticeOverlay = document.getElementById('noticeOverlay');
         const errorText = document.getElementById('errorText');
         const tipBox = document.getElementById('tipBox');
         let tipTimer = null;
+
+        // 重庆居民阶梯电价
+        const PRICE_TIERS = [
+            { max: 200, price: 0.56 },
+            { max: 400, price: 0.61 },
+            { max: Infinity, price: 0.86 }
+        ];
 
         // 页面加载完成后显示公告
         window.addEventListener('DOMContentLoaded', function() {
@@ -641,6 +759,60 @@
             closeAllModal();
             noticeOverlay.classList.add('active');
             noticeOverlay.scrollTop = 0;
+        }
+
+        // 标签页切换
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.notice-tab');
+            const contents = document.querySelectorAll('.notice-content-wrapper');
+            
+            tabs.forEach((t, i) => {
+                t.classList.toggle('active', i === index);
+            });
+            contents.forEach((c, i) => {
+                c.classList.toggle('active', i === index);
+            });
+        }
+
+        // 打开即时电费
+        function openQuickCalc() {
+            closeAllModal();
+            document.getElementById('quickPower').value = '';
+            document.getElementById('quickResult').textContent = '请输入用电量';
+            document.querySelector('.price-info').textContent = '当前适用电价：0.56 元/度';
+            quickModal.classList.add('active');
+        }
+
+        // 即时电费计算（重庆阶梯电价）
+        function calcQuick() {
+            const power = parseFloat(document.getElementById('quickPower').value) || 0;
+            const resultEl = document.getElementById('quickResult');
+            const priceInfoEl = document.querySelector('.price-info');
+            
+            if (power <= 0) {
+                resultEl.textContent = '请输入用电量';
+                priceInfoEl.textContent = '当前适用电价：0.56 元/度';
+                return;
+            }
+
+            let totalCost = 0;
+            let remaining = power;
+            let currentPrice = 0;
+
+            // 阶梯计算
+            if (remaining <= 200) {
+                currentPrice = 0.56;
+                totalCost = remaining * 0.56;
+            } else if (remaining <= 400) {
+                currentPrice = 0.61;
+                totalCost = 200 * 0.56 + (remaining - 200) * 0.61;
+            } else {
+                currentPrice = 0.86;
+                totalCost = 200 * 0.56 + 200 * 0.61 + (remaining - 400) * 0.86;
+            }
+
+            resultEl.textContent = `电费：${totalCost.toFixed(2)} 元`;
+            priceInfoEl.textContent = `当前适用电价：${currentPrice.toFixed(2)} 元/度`;
         }
 
         // 计算核心函数
@@ -673,7 +845,7 @@
             const aTotalPower = powerA + eachPublicPower;
             const bTotalPower = powerB + eachPublicPower;
 
-            // 赋值到结果弹窗（修复ID引用错误）
+            // 赋值到结果弹窗
             document.getElementById('modalUnitPrice').textContent = unitPrice.toFixed(4);
             document.getElementById('modalPublicPower').textContent = publicPower.toFixed(2);
             document.getElementById('modalEachPublicPower').textContent = eachPublicPower.toFixed(2);
@@ -706,6 +878,7 @@
         function closeAllModal() {
             errorModal.classList.remove('active');
             resultModal.classList.remove('active');
+            quickModal.classList.remove('active');
             noticeOverlay.classList.remove('active');
             if (tipTimer) clearTimeout(tipTimer);
             tipBox.classList.remove('active');
@@ -743,7 +916,7 @@ B电费：${document.getElementById('modalBCost').textContent} 元
         }
 
         // 点击遮罩层关闭
-        [errorModal, resultModal, noticeOverlay].forEach(modal => {
+        [errorModal, resultModal, quickModal, noticeOverlay].forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal || e.target.classList.contains('notice-overlay')) {
                     closeAllModal();
