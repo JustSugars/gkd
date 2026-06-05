@@ -15,7 +15,10 @@ export async function onRequest(context) {
   //     /HISTORY_API/history -> params.path = undefined 或 []
   const pathSegments = params.path || [];
   const subPath = pathSegments.length > 0 ? pathSegments[0] : null;
-
+ // 🧪 临时调试：返回实际收到的 subPath 和原始路径
+  if (request.method === 'GET' && url.pathname.startsWith('/HISTORY_API/history/test')) {
+    return new Response(`Debug: subPath="${subPath}", fullPath="${url.pathname}"`, { status: 200 });
+  }
   // 处理 OPTIONS 预检
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
