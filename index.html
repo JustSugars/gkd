@@ -783,13 +783,13 @@
         // ==================== API 调用函数（与 Worker 交互） ====================
         // 获取全部历史记录
         async function fetchHistory() {
-            const response = await fetch('/history-api/history');
+            const response = await fetch('/HISTORY_API/history');
             return await response.json();
         }
 
         // 保存整个历史记录数组（用于添加新记录后的完整替换）
         async function saveHistory(historyArray) {
-            await fetch('/history-api/history', {
+            await fetch('/HISTORY_API/history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(historyArray)
@@ -798,7 +798,7 @@
 
         // 删除单条记录（根据 id）
         async function deleteHistoryItem(id) {
-            const response = await fetch(`/history-api/history/${id}`, {
+            const response = await fetch(`/HISTORY_API/history/${id}`, {
                 method: 'DELETE'
             });
             const result = await response.json();
@@ -810,7 +810,7 @@
 
         // 清空全部历史记录
         async function clearHistory() {
-            const response = await fetch('/history-api/history/clear', {
+            const response = await fetch('/HISTORY_API/history/clear', {
                 method: 'DELETE'
             });
             const result = await response.json();
@@ -922,7 +922,6 @@
             try {
                 await deleteHistoryItem(id);
                 showTip('删除成功');
-                // 如果历史弹窗处于打开状态，刷新显示
                 if (historyModal.classList.contains('active')) {
                     await renderHistoryModal();
                 }
