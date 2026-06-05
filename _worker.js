@@ -1,4 +1,4 @@
-// _worker.js - 完整版
+// _worker.js
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -14,25 +14,37 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 获取 GitHub 更新记录
+    // ---------- 新增：获取 GitHub 更新记录（分页） ----------
     if (request.method === 'GET' && path === '/HISTORY_API/updates') {
       try {
         const page = parseInt(url.searchParams.get('page')) || 1;
         const perPage = 10;
         const owner = 'JustSugars';
         const repo = 'gkd';
+        const token = env.GITHUB_TOKEN || null; // 可选
+
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}&sha=main`;
-        const response = await fetch(apiUrl, {
-          headers: { 'User-Agent': 'Cloudflare-Pages' },
-        });
-        if (!response.ok) throw new Error(`GitHub API error: ${response.status}`);
+        const headers = {
+          'User-Agent': 'Cloudflare-Pages',
+          'Accept': 'application/vnd.github.v3+json',
+        };
+        if (token) headers['Authorization'] = `token ${token}`;
+
+        const response = await fetch(apiUrl, { headers });
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status}`);
+        }
         const commits = await response.json();
-        const hasMore = commits.length === perPage;
+
         const updates = commits.map(commit => ({
           sha: commit.sha.slice(0, 7),
           message: commit.commit.message.split('\n')[0],
           date: commit.commit.author.date,
+          url: commit.html_url,
         }));
+
+        const hasMore = commits.length === perPage;
+
         return new Response(JSON.stringify({ updates, hasMore }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
@@ -44,30 +56,7 @@ export default {
       }
     }
 
-    // 获取客户端 IP 和运营商信息
-    if (request.method === 'GET' && path === '/HISTORY_API/ipinfo') {
-      try {
-        const ip = request.headers.get('CF-Connecting-IP') || 
-                   request.headers.get('X-Forwarded-For')?.split(',')[0] || 
-                   '未知 IP';
-        const isp = request.headers.get('CF-ISP') || '';
-        const country = request.headers.get('CF-IPCountry') || '';
-        let location = '';
-        if (country) location += country;
-        if (isp) location += (location ? ' ' : '') + isp;
-        if (!location) location = '未知位置';
-        return new Response(JSON.stringify({ ip, location }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        });
-      }
-    }
-
-    // 历史记录 API
+    // ---------- 历史记录 API（保持不变） ----------
     if (request.method === 'GET' && path === '/HISTORY_API/history') {
       try {
         const data = await env.HISTORY_KV.get('history', 'json');
@@ -85,7 +74,9 @@ export default {
     if (request.method === 'POST' && path === '/HISTORY_API/history') {
       try {
         const newHistory = await request.json();
-        if (!Array.isArray(newHistory)) throw new Error('Data must be an array');
+        if (!Array.isArray(newHistory)) {
+          throw new Error('Data must be an array');
+        }
         await env.HISTORY_KV.put('history', JSON.stringify(newHistory));
         return new Response(JSON.stringify({ success: true }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -137,7 +128,7 @@ export default {
       }
     }
 
-    // 静态资源
+    // 未匹配的路由：交给静态资源
     return env.ASSETS.fetch(request);
   }
 };
