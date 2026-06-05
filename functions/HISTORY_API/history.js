@@ -14,6 +14,7 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
 
+  return new Response(`Debug: ${url.pathname}`, { status: 200 });
   // 处理 OPTIONS 预检请求
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
