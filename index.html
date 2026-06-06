@@ -15,9 +15,9 @@
             --danger-dark: #d32f2f;
         }
         body.admin-mode {
-            --primary-color: #9c27b0;
-            --primary-dark: #7b1fa2;
-            --primary-light: #f3e5f5;
+            --primary-color: #2e7d32;
+            --primary-dark: #1b5e20;
+            --primary-light: #e8f5e9;
         }
         * {
             font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
@@ -125,14 +125,15 @@
             margin-bottom: 6px !important;
             font-size: 14px;
         }
-        .form-control {
+        .form-control, .form-select {
             width: 100% !important;
             padding: 11px 14px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             font-size: 15px;
+            background-color: #fff;
         }
-        .form-control:focus {
+        .form-control:focus, .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: none;
             outline: none;
@@ -191,7 +192,7 @@
             text-align: center;
             word-break: break-all;
         }
-        /* 弹窗 */
+        /* 弹窗样式 */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -560,6 +561,14 @@
         .key-btn.backspace { background: #ffab91; }
         .key-btn.close-btn { background: #ffcdd2; }
         button { cursor: pointer; user-select: none; }
+        /* 美化下拉框 */
+        .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px 12px;
+            appearance: none;
+        }
     </style>
 </head>
 <body>
@@ -578,7 +587,7 @@
                 <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
             </button>
             <button class="exit-admin-btn" id="exitAdminBtn" style="display: none;">
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
             </button>
         </div>
     </div>
@@ -639,8 +648,11 @@
 <!-- 操作密钥数字键盘弹窗 -->
 <div class="modal-overlay" id="passwordModal"><div class="modal-content keyboard-modal"><h3 class="modal-title">操作密钥</h3><div class="pin-grid" id="pinGrid"><div class="pin-digit">_</div><div class="pin-digit">_</div><div class="pin-digit">_</div><div class="pin-digit">_</div></div><div class="keyboard-buttons" id="keyboard"></div><div class="tip-text" style="margin-top: 16px;">请输入4位数字密码</div></div></div>
 
+<!-- 管理员重新认证弹窗（修改密钥前） -->
+<div class="modal-overlay" id="adminReAuthModal"><div class="modal-content"><h3 class="modal-title">管理员验证</h3><div class="modal-text">修改密钥前请重新输入管理员密钥：</div><input type="password" id="reauthKeyInput" class="form-control" placeholder="当前管理员密钥" style="margin-bottom: 20px;"><div style="display: flex; gap: 12px;"><button class="modal-btn" id="reauthCancelBtn">取消</button><button class="modal-btn" id="reauthConfirmBtn">验证并继续</button></div></div></div>
+
 <!-- 修改密钥弹窗 -->
-<div class="modal-overlay" id="changeKeyModal"><div class="modal-content"><h3 class="modal-title">修改密钥</h3><div class="form-group"><label class="form-label">选择要修改的密钥类型</label><select id="keyTypeSelect" class="form-control"><option value="operation_password">操作密钥（4位数字）</option><option value="admin_prefix">管理员前缀（1-10位字母）</option></select></div><div class="form-group"><label class="form-label">新密钥</label><input type="text" id="newKeyValue" class="form-control" placeholder="新密钥"></div><div class="form-group"><label class="form-label">确认新密钥</label><input type="text" id="confirmKeyValue" class="form-control" placeholder="再次输入新密钥"></div><div style="display: flex; gap: 12px; margin-top: 20px;"><button class="modal-btn" id="changeKeyCancelBtn">取消</button><button class="modal-btn" id="changeKeyConfirmBtn">确认修改</button></div></div></div>
+<div class="modal-overlay" id="changeKeyModal"><div class="modal-content"><h3 class="modal-title">修改密钥</h3><div class="form-group"><label class="form-label">选择要修改的密钥类型</label><select id="keyTypeSelect" class="form-select"><option value="operation_password">操作密钥（4位数字）</option><option value="admin_prefix">管理员密钥（1-10位字母）</option></select></div><div class="form-group"><label class="form-label">新密钥</label><input type="text" id="newKeyValue" class="form-control" placeholder="新密钥"></div><div class="form-group"><label class="form-label">确认新密钥</label><input type="text" id="confirmKeyValue" class="form-control" placeholder="再次输入新密钥"></div><div style="display: flex; gap: 12px; margin-top: 20px;"><button class="modal-btn" id="changeKeyCancelBtn">取消</button><button class="modal-btn" id="changeKeyConfirmBtn">确认修改</button></div></div></div>
 
 <div class="tip-box" id="tipBox">提示信息</div>
 
@@ -656,7 +668,7 @@
     let currentPage = 1;
     let isLoadingUpdates = false;
     let hasMoreUpdates = true;
-    let currentPassword = '';          // 用于数字键盘输入
+    let currentPassword = '';
     let pendingDeleteId = null;
 
     // DOM 元素
@@ -669,10 +681,11 @@
     const confirmModal = document.getElementById('confirmModal');
     const adminLoginModal = document.getElementById('adminLoginModal');
     const passwordModal = document.getElementById('passwordModal');
+    const adminReAuthModal = document.getElementById('adminReAuthModal');
     const changeKeyModal = document.getElementById('changeKeyModal');
     const errorText = document.getElementById('errorText');
     const tipBox = document.getElementById('tipBox');
-    const allModals = [errorModal, resultModal, quickModal, noticeOverlay, historyModal, detailModal, confirmModal, adminLoginModal, passwordModal, changeKeyModal];
+    const allModals = [errorModal, resultModal, quickModal, noticeOverlay, historyModal, detailModal, confirmModal, adminLoginModal, passwordModal, adminReAuthModal, changeKeyModal];
 
     // 阶梯电价
     const PRICE_TIERS = [{ max: 200, price: 0.56 }, { max: 400, price: 0.61 }, { max: Infinity, price: 0.86 }];
@@ -764,13 +777,33 @@
         updateBodyScrollLock();
     }
 
-    // ==================== 修改密钥（仅管理员） ====================
-    function showChangeKeyModal() {
+    // ==================== 修改密钥（增加管理员重新认证） ====================
+    function showChangeKeyFlow() {
         if (!isAdminMode) return;
-        document.getElementById('newKeyValue').value = '';
-        document.getElementById('confirmKeyValue').value = '';
-        changeKeyModal.classList.add('active');
+        // 弹出重新认证弹窗
+        document.getElementById('reauthKeyInput').value = '';
+        adminReAuthModal.classList.add('active');
         updateBodyScrollLock();
+    }
+    async function reauthAndProceed() {
+        const reauthKey = document.getElementById('reauthKeyInput').value;
+        if (!reauthKey) { showTip('请输入管理员密钥'); return; }
+        try {
+            const res = await fetch('/HISTORY_API/admin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: reauthKey }) });
+            const data = await res.json();
+            if (data.success) {
+                // 验证通过，关闭重新认证弹窗，打开修改密钥弹窗
+                adminReAuthModal.classList.remove('active');
+                document.getElementById('newKeyValue').value = '';
+                document.getElementById('confirmKeyValue').value = '';
+                changeKeyModal.classList.add('active');
+                updateBodyScrollLock();
+            } else {
+                showTip('管理员密钥错误，无法修改');
+            }
+        } catch (err) {
+            showTip('验证失败，请重试');
+        }
     }
     async function submitChangeKey() {
         const type = document.getElementById('keyTypeSelect').value;
@@ -779,7 +812,7 @@
         if (newVal !== confirmVal) { showTip('两次输入的新密钥不一致'); return; }
         if (newVal === '') { showTip('新密钥不能为空'); return; }
         if (type === 'operation_password' && !/^\d{4}$/.test(newVal)) { showTip('操作密钥必须为4位数字'); return; }
-        if (type === 'admin_prefix' && !/^[A-Za-z]{1,10}$/.test(newVal)) { showTip('管理员前缀必须是1-10位英文字母'); return; }
+        if (type === 'admin_prefix' && !/^[A-Za-z]{1,10}$/.test(newVal)) { showTip('管理员密钥必须是1-10位英文字母'); return; }
         try {
             const res = await fetch('/HISTORY_API/admin/change-key', {
                 method: 'POST',
@@ -792,7 +825,7 @@
                 changeKeyModal.classList.remove('active');
                 updateBodyScrollLock();
                 if (type === 'admin_prefix') {
-                    showTip('管理员前缀已修改，请重新登录');
+                    showTip('管理员密钥已修改，请重新登录');
                     sessionStorage.removeItem('admin_token');
                     sessionStorage.removeItem('admin_expires');
                     setTimeout(() => location.reload(), 1500);
@@ -960,7 +993,7 @@
     allModals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { if (modal === detailModal) closeDetailModal(); else if (modal === historyModal) closeHistoryModal(); else if (modal === confirmModal) { closeConfirmModal(); pendingConfirmCallback = null; } else closeAllModal(); } }); });
     document.querySelectorAll('.notice-card, .modal-content, .history-card').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllModal(); });
-    window.addEventListener('DOMContentLoaded', async () => { await checkAdminModeOnLoad(); setupEnterKey(); loadUpdates(true); displayCurrentDeviceInfo(); document.getElementById('logoImg').addEventListener('click', showAdminLogin); document.getElementById('exitAdminBtn').addEventListener('click', exitAdmin); document.getElementById('adminConfirmBtn').onclick = () => { const key = document.getElementById('adminKeyInput').value; verifyAdminKey(key); }; document.getElementById('adminCancelBtn').onclick = () => { adminLoginModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('historyBtn').onclick = openHistoryModal; document.getElementById('noticeBtn').onclick = showNotice; document.getElementById('changeKeyBtn').onclick = showChangeKeyModal; document.getElementById('changeKeyCancelBtn').onclick = () => { changeKeyModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('changeKeyConfirmBtn').onclick = submitChangeKey; });
+    window.addEventListener('DOMContentLoaded', async () => { await checkAdminModeOnLoad(); setupEnterKey(); loadUpdates(true); displayCurrentDeviceInfo(); document.getElementById('logoImg').addEventListener('click', showAdminLogin); document.getElementById('exitAdminBtn').addEventListener('click', exitAdmin); document.getElementById('adminConfirmBtn').onclick = () => { const key = document.getElementById('adminKeyInput').value; verifyAdminKey(key); }; document.getElementById('adminCancelBtn').onclick = () => { adminLoginModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('historyBtn').onclick = openHistoryModal; document.getElementById('noticeBtn').onclick = showNotice; document.getElementById('changeKeyBtn').onclick = showChangeKeyFlow; document.getElementById('reauthConfirmBtn').onclick = reauthAndProceed; document.getElementById('reauthCancelBtn').onclick = () => { adminReAuthModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('changeKeyCancelBtn').onclick = () => { changeKeyModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('changeKeyConfirmBtn').onclick = submitChangeKey; });
 </script>
 </body>
 </html>
