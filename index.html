@@ -15,9 +15,9 @@
             --danger-dark: #d32f2f;
         }
         body.admin-mode {
-            --primary-color: #2e7d32;
-            --primary-dark: #1b5e20;
-            --primary-light: #e8f5e9;
+            --primary-color: #99CC66;
+            --primary-dark: #7CB342;
+            --primary-light: #E8F5E9;
         }
         * {
             font-family: "PingFang SC", "Microsoft YaHei", sans-serif !important;
@@ -597,10 +597,10 @@
         <div class="form-group"><label for="powerA" class="form-label">A的用电量（度）</label><input type="number" class="form-control" id="powerA" placeholder="例如：100" step="0.01" min="0"></div>
         <div class="form-group"><label for="powerB" class="form-label">B的用电量（度）</label><input type="number" class="form-control" id="powerB" placeholder="例如：120" step="0.01" min="0"></div>
         <div class="btn-group">
-            <button onclick="calculateElectricity()" class="btn-calculate">计算电费</button>
-            <button onclick="openQuickCalc()" class="btn-quick">即时电费</button>
-            <button onclick="resetForm()" class="btn-reset">重置输入</button>
-            <button id="changeKeyBtn" class="btn-change-key" style="display: none;">修改密钥</button>
+            <button onclick="calculateElectricity()" class="btn-calculate"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 2L15 8.5L22 9.5L17 14L18.5 21L12 17.5L5.5 21L7 14L2 9.5L9 8.5L12 2Z"/></svg>计算电费</button>
+            <button onclick="openQuickCalc()" class="btn-quick"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.5 13h-3v-2h3v2zm0-4h-3V7h3v4z"/></svg>即时电费</button>
+            <button onclick="resetForm()" class="btn-reset"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>重置输入</button>
+            <button id="changeKeyBtn" class="btn-change-key" style="display: none;"><svg class="btn-icon" viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>修改密钥</button>
         </div>
         <div class="device-info-bar" id="deviceInfoBar">正在获取设备信息...</div>
     </div>
@@ -613,7 +613,7 @@
         <div class="notice-tabs"><div class="notice-tab active" onclick="switchTab(0)">更新公告</div><div class="notice-tab" onclick="switchTab(1)">使用指南</div></div>
         <div class="notice-content-wrapper active" id="tab1"><div class="notice-content"><div id="updatesList"></div><div id="updatesLoading" style="display: none; text-align: center; padding: 20px;">加载中...</div><div id="updatesError" style="display: none; text-align: center; padding: 20px; color: #f44336;">加载失败，请稍后重试</div><div id="loadMoreBtn" style="margin-top: 16px; text-align: center;"><button class="notice-btn" style="background-color: #009688; padding: 10px 20px; font-size: 14px;" onclick="loadMoreUpdates()">加载更多</button></div><div id="noMoreMsg" style="display: none; text-align: center; padding: 12px; color: #999;">🎉 已加载全部更新记录</div></div></div>
         <div class="notice-content-wrapper" id="tab2"><div class="notice-content"><p>本计算器专为两人合租场景设计，可精准计算电费分摊金额，自动处理公摊电量的平均分配。</p><p><strong>参数说明：</strong></p><p>1. 总用电量：电费账单显示的总用电度数（必填）</p><p>2. 总电费：电费账单显示的总金额（必填）</p><p>3. A/B的用电量：各自独立电表计量的用电度数</p><div class="formula-box"><p>单价 = 总电费 ÷ 总用电量</p><p>公摊电量 = 总用电量 - A用电量 - B用电量</p><p>每人公摊 = 公摊电量 ÷ 2</p><p>A电费 = (A用电量+每人公摊) × 单价</p></div></div></div>
-        <div class="notice-btn-container"><button class="notice-btn" onclick="closeAllModal()">我已知晓</button></div>
+        <div class="notice-btn-container"><button class="notice-btn" onclick="closeNoticeModal()">我已知晓</button></div>
     </div>
 </div>
 
@@ -634,13 +634,13 @@
 <div class="modal-overlay" id="confirmModal"><div class="modal-content"><h3 class="modal-title" id="confirmTitle">确认操作</h3><div class="modal-text" id="confirmMessage"></div><div style="display: flex; gap: 12px;"><button class="modal-btn" id="confirmCancelBtn" style="background-color: #999;">取消</button><button class="modal-btn danger-btn" id="confirmOkBtn">确定</button></div></div></div>
 
 <!-- 即时电费弹窗 -->
-<div class="modal-overlay" id="quickModal"><div class="modal-content"><h3 class="modal-title title-quick">即时电费计算</h3><div class="form-group"><label class="form-label">输入用电量（度）</label><input type="number" id="quickPower" class="form-control" placeholder="请输入用电度数" step="0.01" min="0" oninput="calcQuick()"></div><div class="quick-result" id="quickResult">请输入用电量</div><div class="tip-text">重庆市居民阶梯电价<br>0-200:0.56元 &nbsp;201-400:0.61元 &nbsp;401-:0.86元</div><div class="price-info" id="priceInfo">预估平均电价：— 元/度</div><button class="modal-btn quick-btn" onclick="closeAllModal()">关闭</button></div></div>
+<div class="modal-overlay" id="quickModal"><div class="modal-content"><h3 class="modal-title title-quick">即时电费计算</h3><div class="form-group"><label class="form-label">输入用电量（度）</label><input type="number" id="quickPower" class="form-control" placeholder="请输入用电度数" step="0.01" min="0" oninput="calcQuick()"></div><div class="quick-result" id="quickResult">请输入用电量</div><div class="tip-text">重庆市居民阶梯电价<br>0-200:0.56元 &nbsp;201-400:0.61元 &nbsp;401-:0.86元</div><div class="price-info" id="priceInfo">预估平均电价：— 元/度</div><button class="modal-btn quick-btn" onclick="closeQuickModal()">关闭</button></div></div>
 
 <!-- 错误弹窗 -->
-<div class="modal-overlay" id="errorModal"><div class="modal-content"><h3 class="modal-title title-error">输入错误</h3><div class="modal-text" id="errorText"></div><button class="modal-btn" onclick="closeAllModal()">关闭</button></div></div>
+<div class="modal-overlay" id="errorModal"><div class="modal-content"><h3 class="modal-title title-error">输入错误</h3><div class="modal-text" id="errorText"></div><button class="modal-btn" onclick="closeErrorModal()">关闭</button></div></div>
 
 <!-- 结果弹窗 -->
-<div class="modal-overlay" id="resultModal"><div class="modal-content"><h3 class="modal-title title-result">计算结果</h3><div class="modal-text"><div class="modal-result-item">每度电单价：<strong id="modalUnitPrice"></strong> 元/度</div><div class="modal-result-item">公共用电量：<strong id="modalPublicPower"></strong> 度</div><div class="modal-result-item">每人平摊公摊：<strong id="modalEachPublicPower"></strong> 度</div><div class="modal-result-item">A总用电量：<strong id="modalATotalPower"></strong> 度</div><div class="modal-result-item">B总用电量：<strong id="modalBTotalPower"></strong> 度</div><div class="modal-result-item modal-cost-item">A的电费：<strong id="modalACost"></strong> 元</div><div class="modal-result-item modal-cost-item">B的电费：<strong id="modalBCost"></strong> 元</div><div class="form-group" style="margin-top: 12px;"><label class="form-label">备注（选填，最多500字）</label><textarea id="remarkInput" class="form-control" rows="2" maxlength="500" placeholder="可添加备注信息..."></textarea></div></div><button class="modal-btn copy-btn" onclick="copyResult()">复制结果</button><button class="modal-btn save-history-btn" onclick="saveCurrentToHistory()">保存到历史</button><button class="modal-btn" onclick="closeAllModal()">关闭</button></div></div>
+<div class="modal-overlay" id="resultModal"><div class="modal-content"><h3 class="modal-title title-result">计算结果</h3><div class="modal-text"><div class="modal-result-item">每度电单价：<strong id="modalUnitPrice"></strong> 元/度</div><div class="modal-result-item">公共用电量：<strong id="modalPublicPower"></strong> 度</div><div class="modal-result-item">每人平摊公摊：<strong id="modalEachPublicPower"></strong> 度</div><div class="modal-result-item">A总用电量：<strong id="modalATotalPower"></strong> 度</div><div class="modal-result-item">B总用电量：<strong id="modalBTotalPower"></strong> 度</div><div class="modal-result-item modal-cost-item">A的电费：<strong id="modalACost"></strong> 元</div><div class="modal-result-item modal-cost-item">B的电费：<strong id="modalBCost"></strong> 元</div><div class="form-group" style="margin-top: 12px;"><label class="form-label">备注（选填，最多500字）</label><textarea id="remarkInput" class="form-control" rows="2" maxlength="500" placeholder="可添加备注信息..."></textarea></div></div><button class="modal-btn copy-btn" onclick="copyResult()">复制结果</button><button class="modal-btn save-history-btn" onclick="saveCurrentToHistory()">保存到历史</button><button class="modal-btn" onclick="closeResultModal()">关闭</button></div></div>
 
 <!-- 管理员登录弹窗 -->
 <div class="modal-overlay" id="adminLoginModal"><div class="modal-content"><h3 class="modal-title">管理员验证</h3><div class="modal-text">请输入管理员密钥：</div><input type="password" id="adminKeyInput" class="form-control" placeholder="密钥" style="margin-bottom: 20px;"><div style="display: flex; gap: 12px;"><button class="modal-btn" id="adminCancelBtn">取消</button><button class="modal-btn" id="adminConfirmBtn">验证</button></div></div></div>
@@ -698,10 +698,19 @@
     }
     function showTip(msg) { if (tipTimer) clearTimeout(tipTimer); tipBox.textContent = msg; tipBox.classList.add('active'); tipTimer = setTimeout(() => tipBox.classList.remove('active'), 1500); }
     function showErrorModal(msg) { errorText.textContent = msg; errorModal.classList.add('active'); updateBodyScrollLock(); }
-    function closeAllModal() { allModals.forEach(m => m.classList.remove('active')); updateBodyScrollLock(); }
+    function closeErrorModal() { errorModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeResultModal() { resultModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeQuickModal() { quickModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeNoticeModal() { noticeOverlay.classList.remove('active'); updateBodyScrollLock(); }
     function closeHistoryModal() { historyModal.classList.remove('active'); updateBodyScrollLock(); }
     function closeDetailModal() { detailModal.classList.remove('active'); updateBodyScrollLock(); }
     function closeConfirmModal() { confirmModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeAdminLoginModal() { adminLoginModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closePasswordModal() { passwordModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeAdminReAuthModal() { adminReAuthModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeChangeKeyModal() { changeKeyModal.classList.remove('active'); updateBodyScrollLock(); }
+    function closeAllModal() { allModals.forEach(m => m.classList.remove('active')); updateBodyScrollLock(); }
+    
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
     function showConfirm(title, message, onConfirm) {
         document.getElementById('confirmTitle').textContent = title;
@@ -773,14 +782,12 @@
                 setTimeout(() => location.reload(), 1000);
             } else { showTip('密钥错误'); }
         } catch (err) { showTip('验证失败，请重试'); }
-        adminLoginModal.classList.remove('active');
-        updateBodyScrollLock();
+        closeAdminLoginModal();
     }
 
     // ==================== 修改密钥（增加管理员重新认证） ====================
     function showChangeKeyFlow() {
         if (!isAdminMode) return;
-        // 弹出重新认证弹窗
         document.getElementById('reauthKeyInput').value = '';
         adminReAuthModal.classList.add('active');
         updateBodyScrollLock();
@@ -792,8 +799,7 @@
             const res = await fetch('/HISTORY_API/admin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: reauthKey }) });
             const data = await res.json();
             if (data.success) {
-                // 验证通过，关闭重新认证弹窗，打开修改密钥弹窗
-                adminReAuthModal.classList.remove('active');
+                closeAdminReAuthModal();
                 document.getElementById('newKeyValue').value = '';
                 document.getElementById('confirmKeyValue').value = '';
                 changeKeyModal.classList.add('active');
@@ -822,8 +828,7 @@
             const data = await res.json();
             if (data.success) {
                 showTip('修改成功');
-                changeKeyModal.classList.remove('active');
-                updateBodyScrollLock();
+                closeChangeKeyModal();
                 if (type === 'admin_prefix') {
                     showTip('管理员密钥已修改，请重新登录');
                     sessionStorage.removeItem('admin_token');
@@ -861,7 +866,6 @@
         const digits = document.querySelectorAll('#pinGrid .pin-digit');
         for (let i = 0; i < digits.length; i++) { digits[i].textContent = (i < currentPassword.length) ? currentPassword[i] : '_'; }
     }
-    function closePasswordModal() { passwordModal.classList.remove('active'); updateBodyScrollLock(); }
     async function verifyPassword(pwd) {
         try { const res = await fetch('/HISTORY_API/verify-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) }); const data = await res.json(); return data.success === true; } catch (err) { return false; }
     }
@@ -990,10 +994,28 @@
 
     // ==================== 初始化 ====================
     function setupEnterKey() { ['totalPower','totalCost','powerA','powerB'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); calculateElectricity(); } }); }); }
-    allModals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { if (modal === detailModal) closeDetailModal(); else if (modal === historyModal) closeHistoryModal(); else if (modal === confirmModal) { closeConfirmModal(); pendingConfirmCallback = null; } else closeAllModal(); } }); });
+    // 为每个弹窗添加独立的遮罩关闭逻辑
+    allModals.forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                if (modal === detailModal) closeDetailModal();
+                else if (modal === historyModal) closeHistoryModal();
+                else if (modal === confirmModal) closeConfirmModal();
+                else if (modal === adminLoginModal) closeAdminLoginModal();
+                else if (modal === passwordModal) closePasswordModal();
+                else if (modal === adminReAuthModal) closeAdminReAuthModal();
+                else if (modal === changeKeyModal) closeChangeKeyModal();
+                else if (modal === errorModal) closeErrorModal();
+                else if (modal === resultModal) closeResultModal();
+                else if (modal === quickModal) closeQuickModal();
+                else if (modal === noticeOverlay) closeNoticeModal();
+                else closeAllModal();
+            }
+        });
+    });
     document.querySelectorAll('.notice-card, .modal-content, .history-card').forEach(c => c.addEventListener('click', e => e.stopPropagation()));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAllModal(); });
-    window.addEventListener('DOMContentLoaded', async () => { await checkAdminModeOnLoad(); setupEnterKey(); loadUpdates(true); displayCurrentDeviceInfo(); document.getElementById('logoImg').addEventListener('click', showAdminLogin); document.getElementById('exitAdminBtn').addEventListener('click', exitAdmin); document.getElementById('adminConfirmBtn').onclick = () => { const key = document.getElementById('adminKeyInput').value; verifyAdminKey(key); }; document.getElementById('adminCancelBtn').onclick = () => { adminLoginModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('historyBtn').onclick = openHistoryModal; document.getElementById('noticeBtn').onclick = showNotice; document.getElementById('changeKeyBtn').onclick = showChangeKeyFlow; document.getElementById('reauthConfirmBtn').onclick = reauthAndProceed; document.getElementById('reauthCancelBtn').onclick = () => { adminReAuthModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('changeKeyCancelBtn').onclick = () => { changeKeyModal.classList.remove('active'); updateBodyScrollLock(); }; document.getElementById('changeKeyConfirmBtn').onclick = submitChangeKey; });
+    window.addEventListener('DOMContentLoaded', async () => { await checkAdminModeOnLoad(); setupEnterKey(); loadUpdates(true); displayCurrentDeviceInfo(); document.getElementById('logoImg').addEventListener('click', showAdminLogin); document.getElementById('exitAdminBtn').addEventListener('click', exitAdmin); document.getElementById('adminConfirmBtn').onclick = () => { const key = document.getElementById('adminKeyInput').value; verifyAdminKey(key); }; document.getElementById('adminCancelBtn').onclick = closeAdminLoginModal; document.getElementById('historyBtn').onclick = openHistoryModal; document.getElementById('noticeBtn').onclick = showNotice; document.getElementById('changeKeyBtn').onclick = showChangeKeyFlow; document.getElementById('reauthConfirmBtn').onclick = reauthAndProceed; document.getElementById('reauthCancelBtn').onclick = closeAdminReAuthModal; document.getElementById('changeKeyCancelBtn').onclick = closeChangeKeyModal; document.getElementById('changeKeyConfirmBtn').onclick = submitChangeKey; });
 </script>
 </body>
 </html>
