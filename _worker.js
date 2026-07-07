@@ -122,6 +122,7 @@ export default {
     // 原有路由：/HISTORY_API/*
     // ============================================================
 
+    // ---------- 获取 GitHub 更新记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/updates') {
       try {
         const page = parseInt(url.searchParams.get('page')) || 1;
@@ -151,10 +152,11 @@ export default {
       }
     }
 
+    // ---------- 获取 IP 信息 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/ipinfo') {
       try {
-        const ip = request.headers.get('CF-Connecting-IP') || 
-                   request.headers.get('X-Forwarded-For')?.split(',')[0] || 
+        const ip = request.headers.get('CF-Connecting-IP') ||
+                   request.headers.get('X-Forwarded-For')?.split(',')[0] ||
                    '未知 IP';
         const isp = request.headers.get('CF-ISP') || '';
         const country = request.headers.get('CF-IPCountry') || '';
@@ -173,6 +175,7 @@ export default {
       }
     }
 
+    // ---------- 获取历史记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/history') {
       try {
         const history = await env.HISTORY_KV.get('history', 'json');
@@ -187,6 +190,7 @@ export default {
       }
     }
 
+    // ---------- 保存历史记录 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/history') {
       try {
         const newHistory = await request.json();
@@ -203,6 +207,7 @@ export default {
       }
     }
 
+    // ---------- 清空历史记录 ----------
     if (request.method === 'DELETE' && path === '/HISTORY_API/history/clear') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -226,6 +231,7 @@ export default {
       }
     }
 
+    // ---------- 删除单条记录 ----------
     const deleteMatch = path.match(/^\/HISTORY_API\/history\/(\d+)$/);
     if (request.method === 'DELETE' && deleteMatch) {
       const id = parseInt(deleteMatch[1], 10);
@@ -251,6 +257,7 @@ export default {
       }
     }
 
+    // ---------- 管理员验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/verify') {
       try {
         const { key } = await request.json();
@@ -279,6 +286,7 @@ export default {
       }
     }
 
+    // ---------- 修改密钥 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/change-key') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -327,6 +335,7 @@ export default {
       }
     }
 
+    // ---------- 操作密钥验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/verify-password') {
       try {
         const { password } = await request.json();
@@ -522,21 +531,31 @@ export default {
         }
       }
 
-      // ---------- 添加或更新游戏 ----------
+      // ---------- 添加或更新游戏（只存共享字段） ----------
       if (request.method === 'POST' && path === '/GAME_API/games') {
         try {
           const gameData = await request.json();
-          if (!gameData.name || !gameData.launchPath || !gameData.gameProcessName || !gameData.savePath) {
-            return new Response(JSON.stringify({ error: '缺少必要字段' }), {
+          // 只提取必要的共享字段
+          if (!gameData.name || !gameData.gameProcessName || !gameData.savePath) {
+            return new Response(JSON.stringify({
+              error: '缺少必要字段：name, gameProcessName, savePath'
+            }), {
               status: 400,
               headers: { 'Content-Type': 'application/json', ...corsHeaders }
             });
           }
           let gamesData = await env.HISTORY_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
+
           if (gameData.id) {
+            // 更新：只更新共享字段
             const index = gamesData.games.findIndex(g => g.id === gameData.id);
             if (index !== -1) {
-              gamesData.games[index] = { ...gamesData.games[index], ...gameData };
+              gamesData.games[index] = {
+                ...gamesData.games[index],
+                name: gameData.name,
+                gameProcessName: gameData.gameProcessName,
+                savePath: gameData.savePath  // 存模板路径
+              };
             } else {
               return new Response(JSON.stringify({ error: '游戏不存在' }), {
                 status: 404,
@@ -544,11 +563,19 @@ export default {
               });
             }
           } else {
+            // 新增
             const newId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+            const newGame = {
+              id: newId,
+              name: gameData.name,
+              gameProcessName: gameData.gameProcessName,
+              savePath: gameData.savePath,  // 存模板路径
+              cloudKey: `game:user:${currentUser}:save:${newId}`,
+              createdAt: Date.now()
+            };
+            gamesData.games.push(newGame);
+            // 返回新游戏的 id 给客户端
             gameData.id = newId;
-            gameData.createdAt = Date.now();
-            gameData.cloudKey = `game:user:${currentUser}:save:${newId}`;
-            gamesData.games.push(gameData);
           }
           await env.HISTORY_KV.put(`game:user:${currentUser}:games`, JSON.stringify(gamesData));
           return new Response(JSON.stringify({ success: true, game: gameData }), {
