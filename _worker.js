@@ -629,8 +629,20 @@ export default {
               headers: { 'Content-Type': 'application/json', ...corsHeaders }
             });
           }
-          if (newPassword.length < 6) {
-            return new Response(JSON.stringify({ error: '新密码长度至少6位' }), {
+          if (newPassword.length > 9) {
+            return new Response(JSON.stringify({ error: '密码不能超过9位' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          if (!/^[a-zA-Z0-9]+$/.test(newPassword)) {
+            return new Response(JSON.stringify({ error: '密码只能包含数字和大小写字母' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          if (newPassword.length < 1) {
+            return new Response(JSON.stringify({ error: '密码不能为空' }), {
               status: 400,
               headers: { 'Content-Type': 'application/json', ...corsHeaders }
             });
@@ -1051,12 +1063,14 @@ export default {
             });
           }
           if (newUsername && newUsername !== oldUsername) {
+            // 检查新用户名是否与管理员冲突
             if (newUsername === adminName) {
               return new Response(JSON.stringify({ error: '用户名与管理员冲突' }), {
                 status: 409,
                 headers: { 'Content-Type': 'application/json', ...corsHeaders }
               });
             }
+            // 检查新用户名是否已被占用
             const users = await env.HISTORY_KV.get('game:users', 'json') || [];
             if (users.includes(newUsername)) {
               return new Response(JSON.stringify({ error: '用户名已被占用' }), {
@@ -1064,7 +1078,12 @@ export default {
                 headers: { 'Content-Type': 'application/json', ...corsHeaders }
               });
             }
+
+            // ============================================================
             // 迁移数据
+            // ============================================================
+
+            // 1. 迁移游戏列表和存档
             const gamesData = await env.HISTORY_KV.get(`game:user:${oldUsername}:games`, 'json');
             if (gamesData) {
               for (const game of gamesData.games) {
@@ -1080,17 +1099,43 @@ export default {
               await env.HISTORY_KV.put(`game:user:${newUsername}:games`, JSON.stringify(gamesData));
               await env.HISTORY_KV.delete(`game:user:${oldUsername}:games`);
             }
+
+            // 2. 迁移用户数据（关键：更新内部的 username 字段）
             const newUserData = { ...oldUserData };
+            newUserData.username = newUsername;  // ← 修复：更新内部 username 字段
             await env.HISTORY_KV.put(`game:user:${newUsername}`, JSON.stringify(newUserData));
             await env.HISTORY_KV.delete(`game:user:${oldUsername}`);
+
+            // 3. 更新用户列表
             let usersList = await env.HISTORY_KV.get('game:users', 'json') || [];
             usersList = usersList.map(u => u === oldUsername ? newUsername : u);
             await env.HISTORY_KV.put('game:users', JSON.stringify(usersList));
           }
+
+          // 修改密码（如果有）
           if (newPassword) {
             const targetUser = newUsername || oldUsername;
             const userData = await env.HISTORY_KV.get(`game:user:${targetUser}`, 'json');
             if (userData) {
+              // 验证密码规则（不超过9位，仅数字大小写字母）
+              if (newPassword.length > 9) {
+                return new Response(JSON.stringify({ error: '密码不能超过9位' }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
+              }
+              if (!/^[a-zA-Z0-9]+$/.test(newPassword)) {
+                return new Response(JSON.stringify({ error: '密码只能包含数字和大小写字母' }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
+              }
+              if (newPassword.length < 1) {
+                return new Response(JSON.stringify({ error: '密码不能为空' }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
+              }
               const salt = Math.random().toString(36).substring(2, 10);
               const newHash = await hashPassword(newPassword, salt);
               userData.password_hash = newHash;
@@ -1098,6 +1143,7 @@ export default {
               await env.HISTORY_KV.put(`game:user:${targetUser}`, JSON.stringify(userData));
             }
           }
+
           return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
