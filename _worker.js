@@ -121,12 +121,14 @@ async function verifySession(request, env) {
   return null;
 }
 
-// 获取管理员动态密码
+// 获取管理员动态密码（使用北京时间）
 async function getAdminDynamicPassword(env) {
   const suffix = await env.HISTORY_KV.get('game:admin_password') || 'admin';
   const now = new Date();
-  const day = now.getUTCDate();
-  const hour = now.getUTCHours();
+  // 转为北京时间 UTC+8
+  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const day = beijingTime.getUTCDate();
+  const hour = beijingTime.getUTCHours();
   return `${day}${hour}${suffix}`;
 }
 
@@ -465,7 +467,7 @@ export default {
         // 检查是否为管理员
         const adminName = await env.HISTORY_KV.get('game:admin_name') || 'Admin';
         if (username === adminName) {
-          // 管理员密码验证（动态）
+          // 管理员密码验证（动态，使用北京时间）
           const expectedPassword = await getAdminDynamicPassword(env);
           if (password !== expectedPassword) {
             return new Response(JSON.stringify({ success: false, message: '用户名或密码错误' }), {
@@ -1008,7 +1010,6 @@ export default {
           });
         }
         try {
-          // 删除用户数据
           const gamesData = await env.HISTORY_KV.get(`game:user:${targetUser}:games`, 'json') || { games: [] };
           for (const game of gamesData.games) {
             await env.HISTORY_KV.delete(game.cloudKey);
@@ -1049,7 +1050,6 @@ export default {
               headers: { 'Content-Type': 'application/json', ...corsHeaders }
             });
           }
-          // 检查新用户名是否被占用
           if (newUsername && newUsername !== oldUsername) {
             if (newUsername === adminName) {
               return new Response(JSON.stringify({ error: '用户名与管理员冲突' }), {
@@ -1087,7 +1087,6 @@ export default {
             usersList = usersList.map(u => u === oldUsername ? newUsername : u);
             await env.HISTORY_KV.put('game:users', JSON.stringify(usersList));
           }
-          // 修改密码
           if (newPassword) {
             const targetUser = newUsername || oldUsername;
             const userData = await env.HISTORY_KV.get(`game:user:${targetUser}`, 'json');
