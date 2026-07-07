@@ -1,9 +1,8 @@
 // ============================================================
-// _worker.js - 电费分摊 + 游戏存档同步（完整版）
-// 使用两个 KV 绑定：HISTORY_KV（原有），GAME_KV（新增）
+// _worker.js - 电费分摊计算器 + 游戏存档同步功能（完整版）
 // ============================================================
 
-// ---------- CORS 头 ----------
+// ---------- CORS 头（新增 Authorization 支持） ----------
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -14,18 +13,17 @@ const corsHeaders = {
 const DEFAULT_OP_PASSWORD = '0000';
 const DEFAULT_ADMIN_PREFIX = 'Admin';
 
-// ---------- 原有辅助函数（管理员动态密钥等）----------
+// ============================================================
+// 原有函数：管理员动态密钥（保持不变）
+// ============================================================
 function getDynamicAdminKey(env, prefix) {
-  // 如果未传入 prefix，则从 KV 读取，但为了性能，调用前应确保已读取
   const now = new Date();
-  // 转换为北京时间 UTC+8
   const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
   const day = beijingTime.getUTCDate();
   const hour = beijingTime.getUTCHours();
   return `${prefix}${day}${hour}`;
 }
 
-// 验证管理员 token（无状态，基于前缀+动态密钥+过期时间）
 async function verifyAdminToken(token, expires, env) {
   if (!token || !expires) return false;
   const now = Date.now();
@@ -40,7 +38,6 @@ async function verifyAdminToken(token, expires, env) {
   return token === expectedToken;
 }
 
-// 初始化 KV 默认值（如果不存在）
 async function initializeKV(env) {
   const opPass = await env.HISTORY_KV.get('operation_password');
   if (opPass === null) {
@@ -57,10 +54,9 @@ async function initializeKV(env) {
 }
 
 // ============================================================
-// 新增：游戏同步相关辅助函数（使用 GAME_KV）
+// 新增：游戏同步相关辅助函数（使用 HISTORY_KV 复用已有绑定）
 // ============================================================
 
-// 生成随机 token（用于会话）
 function generateToken() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let token = '';
@@ -70,7 +66,6 @@ function generateToken() {
   return token;
 }
 
-// 对密码进行加盐哈希（使用 SHA-256）
 async function hashPassword(password, salt) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + salt);
@@ -79,27 +74,23 @@ async function hashPassword(password, salt) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// 验证用户会话（从请求头获取 Authorization: Bearer <token>）
 async function verifySession(request, env) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null; // 未提供 token
+    return null;
   }
   const token = authHeader.substring(7);
-  // 从 GAME_KV 中查找用户，看是否匹配这个 token
-  const users = await env.GAME_KV.get('game:users', 'json') || [];
+  const users = await env.HISTORY_KV.get('game:users', 'json') || [];
   for (const username of users) {
-    const userData = await env.GAME_KV.get(`game:user:${username}`, 'json');
+    const userData = await env.HISTORY_KV.get(`game:user:${username}`, 'json');
     if (userData && userData.session_token === token) {
-      // 检查是否过期
       if (Date.now() > userData.session_expires) {
-        return null; // token 已过期
+        return null;
       }
-      // 返回用户信息
       return { username, userData };
     }
   }
-  return null; // 未找到匹配的 token
+  return null;
 }
 
 // ============================================================
@@ -108,10 +99,8 @@ async function verifySession(request, env) {
 
 export default {
   async fetch(request, env) {
-    // 初始化原有 KV 默认值（不影响游戏相关）
     await initializeKV(env);
 
-    // 处理 OPTIONS 预检请求
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
@@ -119,11 +108,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // ------------------------------------------------------------
-    // 原有：电费分摊相关 API（/HISTORY_API/*）
-    // ------------------------------------------------------------
+    // ============================================================
+    // 原有路由：/HISTORY_API/* （完全保留，不受影响）
+    // ============================================================
 
-    // 公共接口：获取 GitHub 更新记录
+    // ---------- 获取 GitHub 更新记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/updates') {
       try {
         const page = parseInt(url.searchParams.get('page')) || 1;
@@ -153,7 +142,7 @@ export default {
       }
     }
 
-    // 获取 IP 信息
+    // ---------- 获取 IP 信息 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/ipinfo') {
       try {
         const ip = request.headers.get('CF-Connecting-IP') || 
@@ -176,7 +165,7 @@ export default {
       }
     }
 
-    // 历史记录 API（共享，无需用户ID）
+    // ---------- 获取历史记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/history') {
       try {
         const history = await env.HISTORY_KV.get('history', 'json');
@@ -191,6 +180,7 @@ export default {
       }
     }
 
+    // ---------- 保存历史记录 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/history') {
       try {
         const newHistory = await request.json();
@@ -207,7 +197,7 @@ export default {
       }
     }
 
-    // 清空所有历史记录（需要管理员 token）
+    // ---------- 清空历史记录（需要管理员 token） ----------
     if (request.method === 'DELETE' && path === '/HISTORY_API/history/clear') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -231,7 +221,7 @@ export default {
       }
     }
 
-    // 删除单条记录（无需 token，但前端已有操作密钥验证）
+    // ---------- 删除单条记录 ----------
     const deleteMatch = path.match(/^\/HISTORY_API\/history\/(\d+)$/);
     if (request.method === 'DELETE' && deleteMatch) {
       const id = parseInt(deleteMatch[1], 10);
@@ -257,7 +247,7 @@ export default {
       }
     }
 
-    // 管理员登录验证
+    // ---------- 管理员登录验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/verify') {
       try {
         const { key } = await request.json();
@@ -286,7 +276,7 @@ export default {
       }
     }
 
-    // 修改密钥（操作密钥或管理员前缀）
+    // ---------- 修改密钥 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/change-key') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -335,7 +325,7 @@ export default {
       }
     }
 
-    // 操作密钥验证（单条删除时）
+    // ---------- 操作密钥验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/verify-password') {
       try {
         const { password } = await request.json();
@@ -353,14 +343,13 @@ export default {
     }
 
     // ============================================================
-    // 新增：游戏同步 API（/GAME_API/*），使用 GAME_KV
+    // 新增路由：游戏同步 API（/GAME_API/*）
     // ============================================================
 
-    // ---------- 注册 ----------
+    // ---------- 注册（无需登录） ----------
     if (request.method === 'POST' && path === '/GAME_API/auth/register') {
       try {
         const { username, password } = await request.json();
-        // 校验用户名和密码
         if (!username || !password) {
           return new Response(JSON.stringify({ success: false, message: '用户名和密码不能为空' }), {
             status: 400,
@@ -380,8 +369,7 @@ export default {
           });
         }
 
-        // 检查用户名是否已存在
-        const users = await env.GAME_KV.get('game:users', 'json') || [];
+        const users = await env.HISTORY_KV.get('game:users', 'json') || [];
         if (users.includes(username)) {
           return new Response(JSON.stringify({ success: false, message: '用户名已被注册' }), {
             status: 409,
@@ -389,11 +377,9 @@ export default {
           });
         }
 
-        // 生成盐值并哈希密码
         const salt = Math.random().toString(36).substring(2, 10);
         const passwordHash = await hashPassword(password, salt);
 
-        // 保存用户信息（初始无 session）
         const userData = {
           username,
           password_hash: passwordHash,
@@ -402,10 +388,9 @@ export default {
           session_expires: 0,
           created_at: Date.now()
         };
-        await env.GAME_KV.put(`game:user:${username}`, JSON.stringify(userData));
-        // 更新用户列表
+        await env.HISTORY_KV.put(`game:user:${username}`, JSON.stringify(userData));
         users.push(username);
-        await env.GAME_KV.put('game:users', JSON.stringify(users));
+        await env.HISTORY_KV.put('game:users', JSON.stringify(users));
 
         return new Response(JSON.stringify({ success: true, message: '注册成功' }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -418,7 +403,7 @@ export default {
       }
     }
 
-    // ---------- 登录（互斥登录） ----------
+    // ---------- 登录（无需登录） ----------
     if (request.method === 'POST' && path === '/GAME_API/auth/login') {
       try {
         const { username, password } = await request.json();
@@ -429,8 +414,7 @@ export default {
           });
         }
 
-        // 获取用户信息
-        const userData = await env.GAME_KV.get(`game:user:${username}`, 'json');
+        const userData = await env.HISTORY_KV.get(`game:user:${username}`, 'json');
         if (!userData) {
           return new Response(JSON.stringify({ success: false, message: '用户名或密码错误' }), {
             status: 401,
@@ -438,7 +422,6 @@ export default {
           });
         }
 
-        // 验证密码
         const hashedInput = await hashPassword(password, userData.salt);
         if (hashedInput !== userData.password_hash) {
           return new Response(JSON.stringify({ success: false, message: '用户名或密码错误' }), {
@@ -447,14 +430,12 @@ export default {
           });
         }
 
-        // 生成新 token（同时使旧 token 失效）
         const newToken = generateToken();
-        const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7天有效期
+        const expires = Date.now() + 7 * 24 * 60 * 60 * 1000;
         userData.session_token = newToken;
         userData.session_expires = expires;
         userData.last_login_time = Date.now();
-        // 可记录登录 IP（从 request 获取，可选）
-        await env.GAME_KV.put(`game:user:${username}`, JSON.stringify(userData));
+        await env.HISTORY_KV.put(`game:user:${username}`, JSON.stringify(userData));
 
         return new Response(JSON.stringify({
           success: true,
@@ -472,7 +453,7 @@ export default {
       }
     }
 
-    // ---------- 验证 token ----------
+    // ---------- 验证 token（无需登录） ----------
     if (request.method === 'GET' && path === '/GAME_API/auth/verify') {
       const session = await verifySession(request, env);
       if (session) {
@@ -487,209 +468,214 @@ export default {
       }
     }
 
-    // ---------- 登出 ----------
+    // ---------- 登出（无需登录） ----------
     if (request.method === 'POST' && path === '/GAME_API/auth/logout') {
       const session = await verifySession(request, env);
       if (session) {
-        // 清除该用户的 session_token
         const userData = session.userData;
         userData.session_token = null;
         userData.session_expires = 0;
-        await env.GAME_KV.put(`game:user:${session.username}`, JSON.stringify(userData));
+        await env.HISTORY_KV.put(`game:user:${session.username}`, JSON.stringify(userData));
       }
-      // 无论是否登录成功，都返回成功（避免泄露信息）
       return new Response(JSON.stringify({ success: true }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders }
       });
     }
 
-    // ---------- 以下所有接口都需要登录验证 ----------
-    // 先验证 session
-    const session = await verifySession(request, env);
-    if (!session) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
-    }
-    const currentUser = session.username;
+    // ============================================================
+    // 以下所有 /GAME_API/* 接口都需要登录验证
+    // ============================================================
 
-    // ---------- 获取游戏列表 ----------
-    if (request.method === 'GET' && path === '/GAME_API/games') {
-      try {
-        const games = await env.GAME_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
-        return new Response(JSON.stringify(games), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
+    const isGameApiPath = path.startsWith('/GAME_API/');
+    if (isGameApiPath) {
+      // 验证 session
+      const session = await verifySession(request, env);
+      if (!session) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
         });
       }
-    }
+      const currentUser = session.username;
 
-    // ---------- 添加或更新游戏 ----------
-    if (request.method === 'POST' && path === '/GAME_API/games') {
-      try {
-        const gameData = await request.json();
-        // 简单校验
-        if (!gameData.name || !gameData.launchPath || !gameData.gameProcessName || !gameData.savePath) {
-          return new Response(JSON.stringify({ error: '缺少必要字段' }), {
-            status: 400,
+      // ---------- 获取游戏列表 ----------
+      if (request.method === 'GET' && path === '/GAME_API/games') {
+        try {
+          const games = await env.HISTORY_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
+          return new Response(JSON.stringify(games), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
-        // 生成唯一 id（如果已有 id 则更新）
-        let gamesData = await env.GAME_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
-        if (gameData.id) {
-          // 更新已有游戏
-          const index = gamesData.games.findIndex(g => g.id === gameData.id);
-          if (index !== -1) {
-            gamesData.games[index] = { ...gamesData.games[index], ...gameData };
+      }
+
+      // ---------- 添加或更新游戏 ----------
+      if (request.method === 'POST' && path === '/GAME_API/games') {
+        try {
+          const gameData = await request.json();
+          if (!gameData.name || !gameData.launchPath || !gameData.gameProcessName || !gameData.savePath) {
+            return new Response(JSON.stringify({ error: '缺少必要字段' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          let gamesData = await env.HISTORY_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
+          if (gameData.id) {
+            const index = gamesData.games.findIndex(g => g.id === gameData.id);
+            if (index !== -1) {
+              gamesData.games[index] = { ...gamesData.games[index], ...gameData };
+            } else {
+              return new Response(JSON.stringify({ error: '游戏不存在' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json', ...corsHeaders }
+              });
+            }
           } else {
+            const newId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+            gameData.id = newId;
+            gameData.createdAt = Date.now();
+            gameData.cloudKey = `game:user:${currentUser}:save:${newId}`;
+            gamesData.games.push(gameData);
+          }
+          await env.HISTORY_KV.put(`game:user:${currentUser}:games`, JSON.stringify(gamesData));
+          return new Response(JSON.stringify({ success: true, game: gameData }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+
+      // ---------- 删除游戏 ----------
+      const gameDeleteMatch = path.match(/^\/GAME_API\/games\/([^/]+)$/);
+      if (request.method === 'DELETE' && gameDeleteMatch) {
+        const gameId = gameDeleteMatch[1];
+        try {
+          let gamesData = await env.HISTORY_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
+          const newGames = gamesData.games.filter(g => g.id !== gameId);
+          if (newGames.length === gamesData.games.length) {
             return new Response(JSON.stringify({ error: '游戏不存在' }), {
               status: 404,
               headers: { 'Content-Type': 'application/json', ...corsHeaders }
             });
           }
-        } else {
-          // 新增
-          const newId = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-          gameData.id = newId;
-          gameData.createdAt = Date.now();
-          gameData.cloudKey = `game:user:${currentUser}:save:${newId}`;
-          gamesData.games.push(gameData);
-        }
-        await env.GAME_KV.put(`game:user:${currentUser}:games`, JSON.stringify(gamesData));
-        return new Response(JSON.stringify({ success: true, game: gameData }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-    }
-
-    // ---------- 删除游戏 ----------
-    const deleteGameMatch = path.match(/^\/GAME_API\/games\/([^/]+)$/);
-    if (request.method === 'DELETE' && deleteGameMatch) {
-      const gameId = deleteGameMatch[1];
-      try {
-        let gamesData = await env.GAME_KV.get(`game:user:${currentUser}:games`, 'json') || { games: [] };
-        const newGames = gamesData.games.filter(g => g.id !== gameId);
-        if (newGames.length === gamesData.games.length) {
-          return new Response(JSON.stringify({ error: '游戏不存在' }), {
-            status: 404,
+          gamesData.games = newGames;
+          await env.HISTORY_KV.put(`game:user:${currentUser}:games`, JSON.stringify(gamesData));
+          await env.HISTORY_KV.delete(`game:user:${currentUser}:save:${gameId}`);
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
-        gamesData.games = newGames;
-        await env.GAME_KV.put(`game:user:${currentUser}:games`, JSON.stringify(gamesData));
-        // 删除对应的存档数据
-        await env.GAME_KV.delete(`game:user:${currentUser}:save:${gameId}`);
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
       }
-    }
 
-    // ---------- 获取存档信息 ----------
-    const infoMatch = path.match(/^\/GAME_API\/save\/info\/([^/]+)$/);
-    if (request.method === 'GET' && infoMatch) {
-      const gameId = infoMatch[1];
-      try {
-        const saveData = await env.GAME_KV.get(`game:user:${currentUser}:save:${gameId}`, 'json');
-        if (saveData) {
-          return new Response(JSON.stringify({
-            updatedAt: saveData.updatedAt || 0,
-            size: saveData.size || 0
-          }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        } else {
-          return new Response(JSON.stringify({ updatedAt: 0, size: 0 }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders }
-          });
-        }
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-    }
-
-    // ---------- 下载存档（返回二进制） ----------
-    const downloadMatch = path.match(/^\/GAME_API\/save\/([^/]+)$/);
-    if (request.method === 'GET' && downloadMatch) {
-      const gameId = downloadMatch[1];
-      try {
-        const saveData = await env.GAME_KV.get(`game:user:${currentUser}:save:${gameId}`, 'json');
-        if (!saveData || !saveData.data) {
-          return new Response('Not found', { status: 404, headers: corsHeaders });
-        }
-        // 解码 Base64 返回二进制
-        const binaryString = atob(saveData.data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        return new Response(bytes, {
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': bytes.length,
-            ...corsHeaders
+      // ---------- 获取存档信息 ----------
+      const infoMatch = path.match(/^\/GAME_API\/save\/info\/([^/]+)$/);
+      if (request.method === 'GET' && infoMatch) {
+        const gameId = infoMatch[1];
+        try {
+          const saveData = await env.HISTORY_KV.get(`game:user:${currentUser}:save:${gameId}`, 'json');
+          if (saveData) {
+            return new Response(JSON.stringify({
+              updatedAt: saveData.updatedAt || 0,
+              size: saveData.size || 0
+            }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          } else {
+            return new Response(JSON.stringify({ updatedAt: 0, size: 0 }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
           }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      }
-    }
-
-    // ---------- 上传存档 ----------
-    if (request.method === 'POST' && downloadMatch) {
-      const gameId = downloadMatch[1];
-      try {
-        const { data, updatedAt } = await request.json();
-        if (!data) {
-          return new Response(JSON.stringify({ error: '缺少存档数据' }), {
-            status: 400,
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
-        // 计算大小（解码后字节数）
-        const binaryString = atob(data);
-        const size = binaryString.length;
-
-        const saveData = {
-          data: data,
-          updatedAt: updatedAt || Date.now(),
-          size: size
-        };
-        await env.GAME_KV.put(`game:user:${currentUser}:save:${gameId}`, JSON.stringify(saveData));
-        return new Response(JSON.stringify({ success: true, updatedAt: saveData.updatedAt }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        });
       }
+
+      // ---------- 下载存档 ----------
+      const downloadMatch = path.match(/^\/GAME_API\/save\/([^/]+)$/);
+      if (request.method === 'GET' && downloadMatch) {
+        const gameId = downloadMatch[1];
+        try {
+          const saveData = await env.HISTORY_KV.get(`game:user:${currentUser}:save:${gameId}`, 'json');
+          if (!saveData || !saveData.data) {
+            return new Response('Not found', { status: 404, headers: corsHeaders });
+          }
+          const binaryString = atob(saveData.data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return new Response(bytes, {
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'Content-Length': bytes.length,
+              ...corsHeaders
+            }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+
+      // ---------- 上传存档 ----------
+      if (request.method === 'POST' && downloadMatch) {
+        const gameId = downloadMatch[1];
+        try {
+          const { data, updatedAt } = await request.json();
+          if (!data) {
+            return new Response(JSON.stringify({ error: '缺少存档数据' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          const binaryString = atob(data);
+          const size = binaryString.length;
+
+          const saveData = {
+            data: data,
+            updatedAt: updatedAt || Date.now(),
+            size: size
+          };
+          await env.HISTORY_KV.put(`game:user:${currentUser}:save:${gameId}`, JSON.stringify(saveData));
+          return new Response(JSON.stringify({ success: true, updatedAt: saveData.updatedAt }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+
+      // 如果 /GAME_API/ 路径都没匹配上，返回 404
+      return new Response(JSON.stringify({ error: 'Not Found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
     }
 
-    // ---------- 静态资源（原有） ----------
+    // ============================================================
+    // 静态资源（原有）
+    // ============================================================
     return env.ASSETS.fetch(request);
   }
 };
