@@ -2,7 +2,7 @@
 // _worker.js - 电费分摊计算器 + 游戏存档同步功能（完整版）
 // ============================================================
 
-// ---------- CORS 头（新增 Authorization 支持） ----------
+// ---------- CORS 头 ----------
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -14,7 +14,7 @@ const DEFAULT_OP_PASSWORD = '0000';
 const DEFAULT_ADMIN_PREFIX = 'Admin';
 
 // ============================================================
-// 原有函数：管理员动态密钥（保持不变）
+// 原有函数：管理员动态密钥
 // ============================================================
 function getDynamicAdminKey(env, prefix) {
   const now = new Date();
@@ -39,6 +39,7 @@ async function verifyAdminToken(token, expires, env) {
 }
 
 async function initializeKV(env) {
+  // 原有初始化
   const opPass = await env.HISTORY_KV.get('operation_password');
   if (opPass === null) {
     await env.HISTORY_KV.put('operation_password', DEFAULT_OP_PASSWORD);
@@ -51,10 +52,19 @@ async function initializeKV(env) {
   if (history === null) {
     await env.HISTORY_KV.put('history', JSON.stringify([]));
   }
+  // 新增：初始化游戏相关默认值
+  const users = await env.HISTORY_KV.get('game:users', 'json');
+  if (users === null) {
+    await env.HISTORY_KV.put('game:users', JSON.stringify([]));
+  }
+  const inviteCode = await env.HISTORY_KV.get('game:invite_code');
+  if (inviteCode === null) {
+    await env.HISTORY_KV.put('game:invite_code', 'GAME2024');
+  }
 }
 
 // ============================================================
-// 新增：游戏同步相关辅助函数（使用 HISTORY_KV 复用已有绑定）
+// 新增：游戏同步相关辅助函数
 // ============================================================
 
 function generateToken() {
@@ -109,10 +119,9 @@ export default {
     const path = url.pathname;
 
     // ============================================================
-    // 原有路由：/HISTORY_API/* （完全保留，不受影响）
+    // 原有路由：/HISTORY_API/*
     // ============================================================
 
-    // ---------- 获取 GitHub 更新记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/updates') {
       try {
         const page = parseInt(url.searchParams.get('page')) || 1;
@@ -142,7 +151,6 @@ export default {
       }
     }
 
-    // ---------- 获取 IP 信息 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/ipinfo') {
       try {
         const ip = request.headers.get('CF-Connecting-IP') || 
@@ -165,7 +173,6 @@ export default {
       }
     }
 
-    // ---------- 获取历史记录 ----------
     if (request.method === 'GET' && path === '/HISTORY_API/history') {
       try {
         const history = await env.HISTORY_KV.get('history', 'json');
@@ -180,7 +187,6 @@ export default {
       }
     }
 
-    // ---------- 保存历史记录 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/history') {
       try {
         const newHistory = await request.json();
@@ -197,7 +203,6 @@ export default {
       }
     }
 
-    // ---------- 清空历史记录（需要管理员 token） ----------
     if (request.method === 'DELETE' && path === '/HISTORY_API/history/clear') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -221,7 +226,6 @@ export default {
       }
     }
 
-    // ---------- 删除单条记录 ----------
     const deleteMatch = path.match(/^\/HISTORY_API\/history\/(\d+)$/);
     if (request.method === 'DELETE' && deleteMatch) {
       const id = parseInt(deleteMatch[1], 10);
@@ -247,7 +251,6 @@ export default {
       }
     }
 
-    // ---------- 管理员登录验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/verify') {
       try {
         const { key } = await request.json();
@@ -276,7 +279,6 @@ export default {
       }
     }
 
-    // ---------- 修改密钥 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/admin/change-key') {
       const adminToken = request.headers.get('X-Admin-Token');
       const expires = request.headers.get('X-Admin-Expires');
@@ -325,7 +327,6 @@ export default {
       }
     }
 
-    // ---------- 操作密钥验证 ----------
     if (request.method === 'POST' && path === '/HISTORY_API/verify-password') {
       try {
         const { password } = await request.json();
@@ -346,10 +347,10 @@ export default {
     // 新增路由：游戏同步 API（/GAME_API/*）
     // ============================================================
 
-    // ---------- 注册（无需登录） ----------
+    // ---------- 注册（无需登录，需要邀请码） ----------
     if (request.method === 'POST' && path === '/GAME_API/auth/register') {
       try {
-        const { username, password } = await request.json();
+        const { username, password, invite_code } = await request.json();
         if (!username || !password) {
           return new Response(JSON.stringify({ success: false, message: '用户名和密码不能为空' }), {
             status: 400,
@@ -365,6 +366,15 @@ export default {
         if (password.length < 6) {
           return new Response(JSON.stringify({ success: false, message: '密码长度至少6位' }), {
             status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+
+        // 邀请码校验
+        const validInviteCode = await env.HISTORY_KV.get('game:invite_code') || 'GAME2024';
+        if (!invite_code || invite_code !== validInviteCode) {
+          return new Response(JSON.stringify({ success: false, message: '邀请码无效' }), {
+            status: 403,
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           });
         }
@@ -488,7 +498,6 @@ export default {
 
     const isGameApiPath = path.startsWith('/GAME_API/');
     if (isGameApiPath) {
-      // 验证 session
       const session = await verifySession(request, env);
       if (!session) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -553,7 +562,7 @@ export default {
         }
       }
 
-      // ---------- 删除游戏 ----------
+      // ---------- 删除游戏配置 ----------
       const gameDeleteMatch = path.match(/^\/GAME_API\/games\/([^/]+)$/);
       if (request.method === 'DELETE' && gameDeleteMatch) {
         const gameId = gameDeleteMatch[1];
@@ -666,6 +675,30 @@ export default {
         }
       }
 
+      // ---------- 删除云端存档（仅删除存档数据，保留游戏配置） ----------
+      const deleteSaveMatch = path.match(/^\/GAME_API\/save\/([^/]+)$/);
+      if (request.method === 'DELETE' && deleteSaveMatch) {
+        const gameId = deleteSaveMatch[1];
+        try {
+          const saveData = await env.HISTORY_KV.get(`game:user:${currentUser}:save:${gameId}`, 'json');
+          if (!saveData) {
+            return new Response(JSON.stringify({ error: '云端存档不存在' }), {
+              status: 404,
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            });
+          }
+          await env.HISTORY_KV.delete(`game:user:${currentUser}:save:${gameId}`);
+          return new Response(JSON.stringify({ success: true, deleted: true }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        } catch (err) {
+          return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          });
+        }
+      }
+
       // 如果 /GAME_API/ 路径都没匹配上，返回 404
       return new Response(JSON.stringify({ error: 'Not Found' }), {
         status: 404,
@@ -674,7 +707,7 @@ export default {
     }
 
     // ============================================================
-    // 静态资源（原有）
+    // 静态资源
     // ============================================================
     return env.ASSETS.fetch(request);
   }
